@@ -1,0 +1,292 @@
+---
+title: "asee_edms"
+author: "A. Katz"
+date: "4/12/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+```
+
+
+Try combining data sets
+
+```{r}
+
+data_path <- "G:/My Drive/AK Faculty/Research/Projects/project political economy of engineering education/project institutional data/edms_downloads/"
+file_name <- "Master's Degrees Demographics_Chemical Engineering_2018"
+
+temp_df <- read_csv(paste0(data_path, file_name, ".csv"))
+
+```
+
+
+
+```{r}
+
+# testing combination
+
+# my_files <- c("Master's Degrees Demographics_Chemical Engineering_2018", "Master's Degrees Demographics_Chemical Engineering_2017")
+# 
+# temp_files <- lapply(paste0(data_path, my_files), read_csv)
+# 
+# names(temp_files) <- my_files
+# 
+# temp_sol <- bind_rows(temp_files, .id = "column_label")
+```
+
+
+```{r}
+
+# doctoral student combination
+
+file_name_df <- tibble(file_name = list.files(data_path))
+my_files <- file_name_df %>% filter(str_detect(file_name, "Demographics") & 
+                          str_detect(file_name, "2018") & 
+                          str_detect(file_name, "Enrollment") &
+                          str_detect(file_name, "Doctoral"))
+my_files <- my_files$file_name
+
+temp_files <- lapply(paste0(data_path, my_files), read_csv)
+
+names(temp_files) <- my_files
+
+temp_sol <- bind_rows(temp_files, .id = "column_label")
+
+temp_sol %>% write_csv("doctoral enrollment demographics 2018.csv")
+  
+```
+
+
+
+```{r}
+
+doc_df <- read_csv("doctoral enrollment demographics 2018.csv")
+
+doc_df <- doc_df %>% 
+  mutate(column_label = str_remove(column_label, ".csv"))
+
+doc_df <- doc_df %>% separate(column_label, into = c("dataset", "discipline", "year"), sep = "_", remove = FALSE)
+
+doc_df %>% write_csv("doctoral enrollment demographics 2018.csv")
+
+
+
+library(tidytext)
+
+doc_df %>%
+  filter(!str_detect(discipline, "Tech")) %>% 
+  mutate(School = reorder_within(x = School, by = `Foreign Doctoral Enroll`, within = discipline)) %>%
+  group_by(discipline) %>% 
+  top_n(n = 10, wt = `Foreign Doctoral Enroll`) %>% 
+  ggplot(aes(x = `Foreign Doctoral Enroll`, y = School)) +
+  geom_col() +
+  scale_y_reordered() +
+  facet_wrap(discipline ~ ., scales = "free") +
+  theme(strip.text.x = element_text(size = 5))
+
+plot_title <- "top 10 school doctoral enrollment by discipline"
+ggsave(filename = paste0(plot_title, ".png"),
+       plot = last_plot(),
+       width = 25,
+       height = 8,
+       dpi = "print"
+       )
+
+
+```
+
+
+Number of foreign doctoral students by discipline
+
+```{r}
+doc_counts <- doc_df %>% 
+  group_by(discipline) %>% 
+  summarize(foreign_doctoral_count = sum(`Foreign Doctoral Enroll`),
+            foreign_doctoral_perc = round(sum(`Foreign Doctoral Enroll`)/sum(`Total Doctoral Enroll`) * 100, 2))
+
+temp <- doc_counts %>% 
+  filter(discipline != "All Engineering")
+```
+
+
+```{r}
+# plot counts
+
+plot_title <- "Foreign Student Doctoral Enrollment Counts by Discipline"
+temp %>% 
+  mutate(discipline = fct_reorder(discipline, foreign_doctoral_count)) %>% 
+  ggplot(aes(x = foreign_doctoral_count, y = discipline)) +
+  geom_col() +
+  labs(x = "Foreign Student Doctoral Enrollment Counts",
+       y = "Discipline",
+       title = plot_title) +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, size = 9))
+
+ggsave(filename = paste0(plot_title, ".png"),
+       plot = last_plot(),
+       width = 7,
+       height = 7,
+       dpi = "print")
+
+```
+
+
+```{r}
+
+# plot percentages
+
+plot_title <- "Foreign Student Doctoral Enrollment Percentages by Discipline"
+temp %>% 
+  mutate(discipline = fct_reorder(discipline, foreign_doctoral_perc)) %>% 
+  ggplot(aes(x = foreign_doctoral_perc, y = discipline)) +
+  geom_col() +
+  labs(x = "Foreign Student Doctoral Enrollment Percentages",
+       y = "Discipline",
+       title = plot_title) +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, size = 9))
+
+ggsave(filename = paste0(plot_title, ".png"),
+       plot = last_plot(),
+       width = 7,
+       height = 7,
+       dpi = "print")
+
+
+
+```
+
+
+
+```{r}
+
+# masters students
+
+file_name_df <- tibble(file_name = list.files(data_path))
+my_files <- file_name_df %>% filter(str_detect(file_name, "Demographics") & 
+                          str_detect(file_name, "2018") & 
+                          str_detect(file_name, "Enrollment") &
+                          str_detect(file_name, "Doctor"))
+my_files <- my_files$file_name
+
+temp_files <- lapply(paste0(data_path, my_files), read_csv)
+
+names(temp_files) <- my_files
+
+temp_sol <- bind_rows(temp_files, .id = "column_label")
+
+temp_sol %>% write_csv("masters enrollment demographics 2018.csv")
+
+```
+
+
+
+```{r}
+
+mas_df <- read_csv("masters enrollment demographics 2018.csv")
+
+mas_df <- mas_df %>% 
+  mutate(column_label = str_remove(column_label, ".csv"))
+
+mas_df <- mas_df %>% separate(column_label, into = c("dataset", "discipline", "year"), sep = "_", remove = FALSE)
+
+mas_df %>% write_csv("masters enrollment demographics 2018.csv")
+
+mas_df %>%
+  filter(!str_detect(discipline, "Tech")) %>% 
+  mutate(School = reorder_within(x = School, by = `Foreign Master's Enroll`, within = discipline)) %>%
+  group_by(discipline) %>% 
+  top_n(n = 10, wt = `Foreign Master's Enroll`) %>% 
+  ggplot(aes(x = `Foreign Master's Enroll`, y = School)) +
+  geom_col() +
+  scale_y_reordered() +
+  facet_wrap(discipline ~ ., scales = "free") +
+  theme(strip.text.x = element_text(size = 5))
+
+plot_title <- "top 10 school masters enrollment by discipline"
+ggsave(filename = paste0(plot_title, ".png"),
+       plot = last_plot(),
+       width = 25,
+       height = 8,
+       dpi = "print"
+       )
+
+
+```
+
+
+Number of foreign students by discipline
+
+```{r}
+mas_counts <- mas_df %>% 
+  group_by(discipline) %>% 
+  summarize(foreign_masters_count = sum(`Foreign Master's Enroll`),
+            foreign_masters_perc = round(sum(`Foreign Master's Enroll`)/sum(`Total Master's Enroll`) * 100, 2))
+
+temp <- mas_counts %>% 
+  filter(discipline != "All Engineering")
+```
+
+
+```{r}
+# plot counts
+
+plot_title <- "Foreign Student Master's Enrollment Counts by Discipline"
+temp %>% 
+  filter(!str_detect(discipline, "Tech")) %>% 
+  mutate(discipline = fct_reorder(discipline, foreign_masters_count)) %>% 
+  ggplot(aes(x = foreign_masters_count, y = discipline)) +
+  geom_col() +
+  labs(x = "Foreign Student Master's Enrollment Counts",
+       y = "Discipline",
+       title = plot_title) +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, size = 9))
+
+ggsave(filename = paste0(plot_title, ".png"),
+       plot = last_plot(),
+       width = 7,
+       height = 7,
+       dpi = "print")
+
+```
+
+
+```{r}
+
+# plot percentages
+
+plot_title <- "Foreign Student Master's Enrollment Percentages by Discipline"
+temp %>% 
+  filter(!str_detect(discipline, "Tech")) %>% 
+  mutate(discipline = fct_reorder(discipline, foreign_masters_perc)) %>% 
+  ggplot(aes(x = foreign_masters_perc, y = discipline)) +
+  geom_col() +
+  labs(x = "Foreign Student Master's Enrollment Percentages",
+       y = "Discipline",
+       title = plot_title) +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, size = 9))
+
+ggsave(filename = paste0(plot_title, ".png"),
+       plot = last_plot(),
+       width = 7,
+       height = 7,
+       dpi = "print")
+
+
+
+```
+
+```{r}
+
+
+
+```
+
+
